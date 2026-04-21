@@ -2,6 +2,12 @@
 
 ### Features
 
+* initial implementation of acp-agent-cli ([24278bc](https://github.com/ByteLandTechnology/acp-agent-cli/commit/24278bc291a47e0bbd78ab9d29b46ca703498e3a))
+
+## 1.0.0 (2026-04-21)
+
+### Features
+
 * initial implementation of acp-agent-cli ([c9a52e5](https://github.com/ByteLandTechnology/acp-agent-cli/commit/c9a52e500dacf6d1c097b5deca102e427c0fef84))
 
 ### Bug Fixes
