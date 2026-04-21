@@ -7,7 +7,7 @@ description: 'Official full-function ACP CLI for developers and automation, expo
 
 ## Description
 
-Official full-function ACP CLI for developers and automation, exposing the complete ACP protocol surface through one unified command-line workflow.
+Official full-function ACP CLI for developers and automation, exposing the complete ACP protocol surface and an integrated agent registry for discovering, managing, and installing ACP agents through one unified command-line workflow.
 
 This generated Skill reuses the approved description contract across Cargo
 metadata, `SKILL.md`, README, and help text.
@@ -220,7 +220,7 @@ Human-readable discovery:
 ```text
 $ acp-agent-cli
 NAME
-  acp-agent-cli - Official full-function ACP CLI for developers and automation, exposing the complete ACP protocol surface through one unified command-line workflow.
+  acp-agent-cli - Official full-function ACP CLI for developers and automation, exposing the complete ACP protocol surface and an integrated agent registry for discovering, managing, and installing ACP agents through one unified command-line workflow.
 ```
 
 `--help` discovery:
