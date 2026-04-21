@@ -1,13 +1,53 @@
 ---
 name: 'acp-agent-cli'
-description: 'Official full-function ACP CLI for developers and automation, exposing the complete ACP protocol surface and an integrated agent registry for discovering, managing, and installing ACP agents through one unified command-line workflow.'
+description: 'Full-function ACP CLI for developers and automation, exposing the complete ACP protocol surface and an integrated agent registry for discovering, managing, and installing ACP agents through one unified command-line workflow.'
+argument-hint: "describe the action to perform (e.g. start daemon, list sessions, run diagnostic)"
+user-invocable: true
 ---
 
 # acp-agent-cli
 
+## User Input
+
+```text
+$ARGUMENTS
+```
+
+You **MUST** consider the user input before proceeding (if not empty).
+
+When the user passes a natural language request, interpret it and map it to the
+appropriate CLI command using the command reference below. If the request is
+ambiguous, ask the user to clarify. Execute the mapped command via Bash and
+return the result.
+
+### Natural Language to Command Mapping
+
+| User Intent | CLI Command |
+| --- | --- |
+| start daemon | `acp-agent-cli daemon start` |
+| stop daemon | `acp-agent-cli daemon stop` |
+| daemon status | `acp-agent-cli daemon status` |
+| restart daemon | `acp-agent-cli daemon restart` |
+| show paths | `acp-agent-cli paths` |
+| show or set context | `acp-agent-cli context show` or `context use` |
+| list sessions | `acp-agent-cli session list` |
+| create session | `acp-agent-cli session create` |
+| run diagnostic | `acp-agent-cli run <INPUT>` |
+| open REPL | `acp-agent-cli repl` |
+| agent status | `acp-agent-cli agent status` |
+| list commands | `acp-agent-cli command list` |
+| list skills | `acp-agent-cli skill list` |
+| list proposals | `acp-agent-cli proposal list` |
+| file transfer | `acp-agent-cli file upload/download` |
+| search code | `acp-agent-cli code search` |
+| get help | `acp-agent-cli help [COMMAND_PATH]` |
+
+If the user's request does not match any known command, explain what the CLI
+can do and suggest relevant commands.
+
 ## Description
 
-Official full-function ACP CLI for developers and automation, exposing the complete ACP protocol surface and an integrated agent registry for discovering, managing, and installing ACP agents through one unified command-line workflow.
+Full-function ACP CLI for developers and automation, exposing the complete ACP protocol surface and an integrated agent registry for discovering, managing, and installing ACP agents through one unified command-line workflow.
 
 This generated Skill reuses the approved description contract across Cargo
 metadata, `SKILL.md`, README, and help text.
@@ -220,7 +260,7 @@ Human-readable discovery:
 ```text
 $ acp-agent-cli
 NAME
-  acp-agent-cli - Official full-function ACP CLI for developers and automation, exposing the complete ACP protocol surface and an integrated agent registry for discovering, managing, and installing ACP agents through one unified command-line workflow.
+  acp-agent-cli - Full-function ACP CLI for developers and automation, exposing the complete ACP protocol surface and an integrated agent registry for discovering, managing, and installing ACP agents through one unified command-line workflow.
 ```
 
 `--help` discovery:
