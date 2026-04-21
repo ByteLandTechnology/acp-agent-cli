@@ -1,3 +1,9 @@
+## [1.0.2](https://github.com/ByteLandTechnology/acp-agent-cli/compare/v1.0.1...v1.0.2) (2026-04-21)
+
+### Bug Fixes
+
+* add argument handling and update skill description ([59c15e2](https://github.com/ByteLandTechnology/acp-agent-cli/commit/59c15e2ebadb69319d60ffbcc6a557745c487f9b))
+
 ## [1.0.1](https://github.com/ByteLandTechnology/acp-agent-cli/compare/v1.0.0...v1.0.1) (2026-04-21)
 
 ### Bug Fixes
