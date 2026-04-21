@@ -1,6 +1,6 @@
 [package]
 name = "acp-agent-cli"
-version = "1.0.0"
+version = "1.0.1"
 edition = "2024"
 description = "Official full-function ACP CLI for developers and automation, exposing the complete ACP protocol surface and an integrated agent registry for discovering, managing, and installing ACP agents through one unified command-line workflow."
 

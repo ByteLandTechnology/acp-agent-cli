@@ -1,3 +1,9 @@
+## [1.0.1](https://github.com/ByteLandTechnology/acp-agent-cli/compare/v1.0.0...v1.0.1) (2026-04-21)
+
+### Bug Fixes
+
+* sync description surfaces with approved design contract ([0d16ac8](https://github.com/ByteLandTechnology/acp-agent-cli/commit/0d16ac8ac6cf9a055715d197da7f86a32ea7d053))
+
 ## 1.0.0 (2026-04-21)
 
 ### Features
