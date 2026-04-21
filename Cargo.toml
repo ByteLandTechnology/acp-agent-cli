@@ -1,0 +1,33 @@
+[package]
+name = "acp-agent-cli"
+version = "1.0.0"
+edition = "2024"
+description = "Official full-function ACP CLI for developers and automation, exposing the complete ACP protocol surface and an integrated agent registry for discovering, managing, and installing ACP agents through one unified command-line workflow."
+
+# The package description is the canonical one-line purpose summary approved by
+# the cli-forge description stage. Keep README/help/SKILL.md aligned with it.
+
+[dependencies]
+clap = { version = "4", features = ["derive"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+serde_yaml = "0.9"
+toml = "0.8"
+anyhow = "1"
+directories = "5"
+rustyline = "14"
+ureq = { version = "3", features = ["json"] }
+sha2 = "0.10"
+tempfile = "3"
+libc = "0.2"
+flate2 = "1"
+tar = "0.4"
+zip = "2"
+which = "7"
+chrono = { version = "0.4", features = ["serde"] }
+
+[dev-dependencies]
+assert_cmd = "2.0"
+predicates = "3.1"
+tempfile = "3"
+

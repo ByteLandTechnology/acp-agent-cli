@@ -1,0 +1,1537 @@
+schema_version: 1
+generated_by: cli-forge-plan
+generated_at: "2026-04-19T02:19:00Z"
+
+status:
+  approval_state: approved_by_user
+  approved: true
+  approved_at: "2026-04-19T02:20:00Z"
+  recommended_next_skill_if_approved: cli-forge-scaffold
+  refresh_note: "Added registry command group (search, list, show, installed, install, uninstall, update) and registry_target shared flag set."
+
+project:
+  path: /Volumes/Documents/acp-agent-cli
+  existing_project: false
+  plan_mode: extension_with_registry
+  skill_name: acp-agent-cli
+  package_name: acp-agent-cli
+  npm_package_name: acp-agent-cli
+  design_contract_path: /Volumes/Documents/acp-agent-cli/.cli-forge/design-contract.yml
+  design_contract_entry_gate_note: >
+    The design contract is approved and now feeds the Plan stage as the locked
+    upstream authority.
+
+design_inheritance:
+  purpose_summary: "Official full-function ACP CLI for developers and automation, exposing the complete ACP protocol surface and an integrated agent registry for discovering, managing, and installing ACP agents through one unified command-line workflow."
+  positioning_statement: "acp-agent-cli is the standard local entrypoint for ACP, packaging the full protocol surface into one Rust CLI for developers, scripts, CI, and agent-integrated runtimes. It extends beyond raw protocol access to provide a built-in agent registry that discovers available ACP agents from remote catalogs, detects locally installed agents, and auto-installs specified agents on demand — making it the single daily workflow surface for the full ACP lifecycle from agent discovery to session operation."
+  publish_channel_preference: repo_native_and_npm_from_publish_stage
+
+invocation_layers:
+  shipped:
+    command: "acp-agent-cli [OPTIONS] <COMMAND>"
+    role: Canonical installed skill interface.
+  dev:
+    command: "cargo run -- [OPTIONS] <COMMAND>"
+    role: Source checkout development interface.
+  release_binary:
+    command: "./target/release/acp-agent-cli [OPTIONS] <COMMAND>"
+    role: Built release-binary verification interface.
+
+global_contract:
+  global_options:
+    - name: --format
+      short: -f
+      type: enum
+      required: false
+      default: yaml
+      enum_values: [yaml, json, toml]
+      description: Select the structured output format for one-shot commands and structured help.
+    - name: --help
+      short: -h
+      type: bool
+      required: false
+      default: false
+      description: Print plain-text help for the current command path.
+    - name: --version
+      short: -V
+      type: bool
+      required: false
+      default: false
+      description: Print the CLI version and exit.
+    - name: --config-dir
+      type: path
+      required: false
+      default: platform_default_user_scoped
+      description: Override the configuration directory.
+    - name: --data-dir
+      type: path
+      required: false
+      default: platform_default_user_scoped
+      description: Override the durable data directory.
+    - name: --state-dir
+      type: path
+      required: false
+      default: platform_state_dir_or_data_dir_state
+      description: Override the runtime state directory.
+    - name: --cache-dir
+      type: path
+      required: false
+      default: platform_default_user_scoped
+      description: Override the cache directory.
+    - name: --log-dir
+      type: path
+      required: false
+      default: state_dir_logs_when_enabled
+      description: Override the optional log directory.
+  command_entrypoint: "acp-agent-cli [OPTIONS] <COMMAND>"
+  structured_error_format: structured_stderr
+
+help_behavior:
+  plain_text_help:
+    trigger: "<command> --help"
+    channel: stdout
+    format: human_readable_text
+    scope: Available for the top level and every public command path.
+  structured_help:
+    trigger: "acp-agent-cli help [COMMAND_PATH ...] [--format <FORMAT>]"
+    channel: stdout
+    default_format: yaml
+    supported_formats: [yaml, json, toml]
+    scope: Machine-readable help for the top level and every public command path.
+  leaf_default_behavior: "Leaf commands never auto-render help; missing required input stays a structured error in the selected output format."
+  non_leaf_default_behavior: "Top-level and non-leaf command paths auto-render human-readable help on stdout and exit 0."
+  flag_behavior: "--help on any command path renders human-readable help on stdout and exits 0."
+  subcommand_behavior: "help [COMMAND_PATH ...] returns structured help in yaml/json/toml."
+  human_readable_format:
+    style: man_like
+    required_sections:
+      - NAME
+      - SYNOPSIS
+      - DESCRIPTION
+      - OPTIONS
+      - FORMATS
+      - EXAMPLES
+      - EXIT CODES
+    section_order: "NAME -> SYNOPSIS -> DESCRIPTION -> OPTIONS -> FORMATS -> EXAMPLES -> EXIT CODES"
+
+output_strategy:
+  default_format: yaml
+  supported_formats: [yaml, json, toml]
+  one_shot_contract:
+    envelope: ResultEnvelope
+    fields: [command, status, summary, data, context, next_steps, errors]
+    error_format: structured_stderr
+  structured_help_contract:
+    source_command: help
+    error_format: structured_stderr
+  streaming_contract:
+    status: in_scope
+    preferred_format: ndjson
+    surfaces:
+      - "acp-agent-cli session prompt --stream"
+      - "acp-agent-cli events follow"
+      - "acp-agent-cli terminal output"
+      - "acp-agent-cli passthrough command --stream"
+      - "acp-agent-cli passthrough skill --stream"
+    format_mapping:
+      json: ndjson
+      yaml: multi_document
+      toml: unsupported_with_structured_error
+  command_specific_exceptions:
+    - command: acp-agent-cli repl
+      behavior: Interactive session console that prioritizes conversational terminal rendering instead of one-shot ResultEnvelope output.
+    - command: acp-agent-cli daemon run
+      behavior: Attached foreground app-server process that does not terminate with a one-shot ResultEnvelope.
+
+capabilities:
+  stream:
+    status: in_scope
+    justification: "ACP prompts, event feeds, terminal output, and passthrough flows require structured incremental delivery."
+  repl:
+    status: in_scope
+    justification: "The CLI exposes a session console for interactive ACP control and approval handling."
+  daemon:
+    status: in_scope
+    justification: "A managed app-server lifecycle is required so most operational command paths can run inline or through one warm background process."
+
+runtime_behavior:
+  runtime_directories:
+    model: four_directory_plus_optional_logs_user_scoped_runtime
+    directories:
+      - name: config
+        env_var: ACP_AGENT_CLI_CONFIG_DIR
+        purpose: Stores user configuration, selected defaults, and non-secret CLI preferences.
+      - name: data
+        env_var: ACP_AGENT_CLI_DATA_DIR
+        purpose: Stores durable ACP metadata, cached summaries, and persisted control-plane state that should survive restarts.
+      - name: state
+        env_var: ACP_AGENT_CLI_STATE_DIR
+        purpose: Stores volatile runtime state such as active selections, daemon metadata, lock files, pid files, and REPL history.
+      - name: cache
+        env_var: ACP_AGENT_CLI_CACHE_DIR
+        purpose: Stores disposable cache entries for ACP discovery and read-heavy inspection workflows.
+      - name: logs
+        env_var: ACP_AGENT_CLI_LOG_DIR
+        purpose: Stores optional command and daemon logs for troubleshooting.
+    notes:
+      - "state_dir defaults to the platform state directory when available, otherwise data_dir/state."
+      - "Workspace browsing resolves from ACP_WORKSPACE_ROOT when set, otherwise the user's home directory or current directory fallback."
+      - "Daemon artifacts live beneath state_dir/daemon and REPL history lives beneath state_dir/repl."
+      - "Installed ACP agents live beneath data_dir/agents and registry cache lives beneath cache_dir/registry."
+      - "Registry configuration is stored in config_dir/registry.yml."
+  active_context:
+    supported: true
+    persisted_fields:
+      - agent
+      - agent_args
+      - workspace
+      - session_id
+      - selectors
+    inspect_command: "acp-agent-cli context show"
+    persist_command: "acp-agent-cli context use --workspace /abs/path --session 42"
+    one_shot_overrides:
+      - --agent
+      - --workspace
+      - --session
+      - --selector
+      - --cwd
+    semantics:
+      - "Per-invocation overrides beat persisted Active Context values for one call only."
+      - "Commands resolve the effective context before local execution or daemon routing."
+      - "Commands that require a session or workspace fail structurally when neither explicit overrides nor persisted context can satisfy the requirement."
+    response_fields:
+      - persisted_context
+      - effective_context
+      - override_applied
+      - missing_requirements
+
+shared_flag_sets:
+  session_target:
+    description: Target a specific ACP session for the current invocation.
+    flags:
+      - name: --session
+        type: string
+        required: false
+        default: active_context
+        description: Override the active session for one invocation.
+  workspace_target:
+    description: Target a specific workspace for the current invocation.
+    flags:
+      - name: --workspace
+        type: path
+        required: false
+        default: active_context_or_none
+        description: Override the workspace path for one invocation.
+  agent_target:
+    description: Target a specific ACP executable or configured agent profile for the current invocation.
+    flags:
+      - name: --agent
+        type: string
+        required: false
+        default: active_context_or_configured_default
+        description: Override the ACP executable or configured agent profile for one invocation.
+  selector_override:
+    description: Override default ACP selection heuristics.
+    flags:
+      - name: --selector
+        type: string
+        required: false
+        repeatable: true
+        default: none
+        description: Add or override Active Context selectors in KEY=VALUE form.
+  cwd_override:
+    description: Override the working directory context presented to ACP.
+    flags:
+      - name: --cwd
+        type: path
+        required: false
+        default: none
+        description: Bind the invocation to an explicit working directory.
+  pagination:
+    description: Control paginated listing responses.
+    flags:
+      - name: --page
+        type: int
+        required: false
+        default: 1
+        description: 1-based page index to return.
+      - name: --page-size
+        type: int
+        required: false
+        default: 20
+        description: Maximum number of items to return in one page.
+  daemon_routing:
+    description: Route eligible commands through the managed daemon instead of local execution.
+    flags:
+      - name: --via
+        type: enum
+        required: false
+        default: local
+        values: [local, daemon]
+        description: Execute locally or through the managed daemon when the command is daemonizable.
+      - name: --ensure-daemon
+        type: bool
+        required: false
+        default: false
+        description: Start or reuse the daemon before executing a daemon-routed command; valid only with --via daemon.
+  registry_target:
+    description: Override the default ACP agent registry endpoint for the current invocation.
+    flags:
+      - name: --registry
+        type: string
+        required: false
+        default: configured_default
+        description: Override the registry URL for this invocation; defaults to the configured registry endpoint.
+      - name: --registry-config
+        type: path
+        required: false
+        default: config_dir/registry.yml
+        description: Path to a custom registry configuration file.
+
+daemon_contract:
+  status: in_scope
+  enabled: true
+  mode: app_server
+  instance_model: single_instance_default
+  lifecycle:
+    foreground: [run]
+    background: [start, stop, restart, status]
+  local_only_command_paths:
+    - help
+    - paths
+    - context show
+    - context use
+    - agent status
+    - agent candidates
+    - agent select
+    - agent set-executable
+    - agent set-args
+    - workspace browse
+    - workspace mkdir
+    - session use
+    - repl
+    - daemon
+    - registry search
+    - registry list
+    - registry show
+    - registry installed
+    - registry install
+    - registry uninstall
+    - registry update
+  daemonizable_command_paths:
+    - session create
+    - session list
+    - session show
+    - session prompt
+    - session cancel-turn
+    - session stop
+    - session mode
+    - session config-option
+    - session model
+    - session authenticate
+    - session remote-sessions
+    - command list
+    - skill list
+    - proposal list
+    - proposal approve
+    - proposal reject
+    - proposal edit
+    - file upload
+    - file download
+    - code read
+    - code list
+    - code search
+    - terminal create
+    - terminal list
+    - terminal input
+    - terminal resize
+    - terminal output
+    - terminal close
+    - port-forward create
+    - port-forward list
+    - port-forward delete
+    - events follow
+    - state show
+    - passthrough command
+    - passthrough skill
+  client_routing:
+    execution_flag:
+      name: --via
+      values: [local, daemon]
+      default: local
+    ensure_daemon_flag:
+      name: --ensure-daemon
+      requires: --via daemon
+  transports:
+    local_default: unix_socket_or_named_pipe
+    tcp: opt_in_loopback_only
+  auth:
+    local_ipc: os_permissions
+    tcp: required_when_enabled
+  rpc:
+    protocol: json_rpc_2_0
+    methods:
+      - daemon.health
+      - daemon.status
+      - daemon.shutdown
+      - command.execute
+      - command.execute_stream
+  status_fields:
+    - state
+    - readiness
+    - instance_id
+    - pid
+    - transport
+    - endpoint
+    - uptime_sec
+    - active_requests
+    - queue_depth
+    - last_error
+    - recommended_next_action
+  return_on:
+    start: [running, failed, timeout]
+    stop: [stopped, failed, timeout]
+    restart: [running, failed, timeout]
+    run: [stopped, failed]
+  recovery: client_uses_status_stop_restart_and_structured_errors
+  streaming:
+    rpc_method: command.execute_stream
+    json: ndjson
+    yaml: multi_document
+    toml: unsupported_unless_explicitly_planned
+  runtime_artifacts:
+    directory: state/daemon
+    files:
+      - daemon.pid
+      - daemon.sock_or_pipe_metadata
+      - daemon-state.json
+      - daemon.log
+      - daemon.lock
+      - auth.token_when_tcp_enabled
+  scaffold_readiness_note: "The current cli-forge scaffold baseline may need dedicated daemon support instead of claiming app-server parity automatically."
+
+commands:
+  top_level:
+    - name: help
+      kind: leaf
+      summary: Return structured help for the requested command path.
+      positionals:
+        - name: command_path
+          type: string_list
+          required: false
+          description: Optional command path such as `session prompt` or `terminal output`.
+      flags: []
+      supported_output_formats: [yaml, json, toml]
+      error_format: structured_stderr
+
+    - name: run
+      kind: leaf
+      summary: Execute a one-shot prompt against the resolved ACP agent and return the result envelope.
+      positionals:
+        - name: input
+          type: string
+          required: true
+          description: Prompt text to send to the ACP agent.
+      flags:
+        - name: --log-enabled
+          type: bool
+          required: false
+          default: false
+          description: Include the optional log directory in the resolved runtime paths.
+      shared_flag_sets: [agent_target, workspace_target, session_target, selector_override, cwd_override, daemon_routing]
+      supported_output_formats: inherited_global_format
+      error_format: structured_stderr
+
+    - name: paths
+      kind: leaf
+      summary: Inspect resolved config, data, state, cache, and optional log directories.
+      positionals: []
+      flags: []
+      supported_output_formats: inherited_global_format
+      error_format: structured_stderr
+
+    - name: context
+      kind: group
+      summary: Inspect and persist Active Context defaults.
+      subcommands:
+        - name: show
+          command_path: "acp-agent-cli context show"
+          kind: leaf
+          summary: Display the persisted and effective Active Context.
+          positionals: []
+          flags: []
+          supported_output_formats: inherited_global_format
+          error_format: structured_stderr
+        - name: use
+          command_path: "acp-agent-cli context use"
+          kind: leaf
+          summary: Persist agent, workspace, session, and selector defaults for later invocations.
+          positionals: []
+          flags:
+            - name: --clear
+              type: bool
+              required: false
+              default: false
+              description: Clear the persisted Active Context before applying new values.
+          shared_flag_sets: [agent_target, workspace_target, session_target, selector_override]
+          supported_output_formats: inherited_global_format
+          error_format: structured_stderr
+
+    - name: agent
+      kind: group
+      summary: Manage the local ACP executable, launch arguments, and candidate discovery.
+      subcommands:
+        - name: status
+          command_path: "acp-agent-cli agent status"
+          kind: leaf
+          summary: Show the selected ACP executable, argument vector, and readiness to create sessions.
+          positionals: []
+          flags: []
+          supported_output_formats: inherited_global_format
+          error_format: structured_stderr
+        - name: candidates
+          command_path: "acp-agent-cli agent candidates"
+          kind: leaf
+          summary: List compatible ACP executable candidates discovered from configuration and PATH.
+          positionals: []
+          flags:
+            - name: --search
+              type: string
+              required: false
+              default: none
+              description: Filter candidates by substring match.
+          shared_flag_sets: [pagination]
+          supported_output_formats: inherited_global_format
+          error_format: structured_stderr
+        - name: select
+          command_path: "acp-agent-cli agent select"
+          kind: leaf
+          summary: Persist the chosen ACP candidate as the default executable profile.
+          positionals:
+            - name: candidate_id
+              type: string
+              required: true
+              description: Candidate identifier from `agent candidates`.
+          flags:
+            - name: --set-active
+              type: bool
+              required: false
+              default: true
+              description: Persist the selected candidate as the active agent profile immediately.
+          supported_output_formats: inherited_global_format
+          error_format: structured_stderr
+        - name: set-executable
+          command_path: "acp-agent-cli agent set-executable"
+          kind: leaf
+          summary: Persist an explicit ACP executable path or command name.
+          positionals:
+            - name: executable
+              type: string
+              required: true
+              description: Executable path or command name to use for ACP launches.
+          flags: []
+          supported_output_formats: inherited_global_format
+          error_format: structured_stderr
+        - name: set-args
+          command_path: "acp-agent-cli agent set-args"
+          kind: leaf
+          summary: Persist the default launch argument vector for the selected ACP executable.
+          positionals: []
+          flags:
+            - name: --arg
+              type: string
+              required: false
+              repeatable: true
+              default: none
+              description: Append one argument to the persisted default launch vector.
+            - name: --clear
+              type: bool
+              required: false
+              default: false
+              description: Clear the existing persisted argument vector before applying new --arg values.
+          supported_output_formats: inherited_global_format
+          error_format: structured_stderr
+
+    - name: workspace
+      kind: group
+      summary: Browse and prepare local workspaces for ACP sessions.
+      subcommands:
+        - name: browse
+          command_path: "acp-agent-cli workspace browse"
+          kind: leaf
+          summary: Browse allowed workspace roots before session creation.
+          positionals:
+            - name: path
+              type: path
+              required: false
+              default: workspace_root
+              description: Optional starting path inside the configured workspace root.
+          flags: []
+          supported_output_formats: inherited_global_format
+          error_format: structured_stderr
+        - name: mkdir
+          command_path: "acp-agent-cli workspace mkdir"
+          kind: leaf
+          summary: Create a workspace directory inside the allowed workspace root.
+          positionals:
+            - name: path
+              type: path
+              required: true
+              description: Directory path to create.
+          flags: []
+          supported_output_formats: inherited_global_format
+          error_format: structured_stderr
+
+    - name: session
+      kind: group
+      summary: Create, inspect, and control ACP sessions.
+      subcommands:
+        - name: create
+          command_path: "acp-agent-cli session create"
+          kind: leaf
+          summary: Create a local ACP session bound to a workspace and optional startup mode.
+          positionals:
+            - name: workspace
+              type: path
+              required: true
+              description: Absolute workspace path for the new session.
+          flags:
+            - name: --startup
+              type: enum
+              required: false
+              default: new
+              values: [new, load, resume, fork]
+              description: Session startup mode.
+            - name: --acp-session-id
+              type: string
+              required: false
+              default: none
+              description: ACP remote session id required when --startup is load, resume, or fork.
+            - name: --set-active
+              type: bool
+              required: false
+              default: true
+              description: Persist the created session as the active session.
+          shared_flag_sets: [agent_target, selector_override, cwd_override, daemon_routing]
+          supported_output_formats: inherited_global_format
+          error_format: structured_stderr
+        - name: list
+          command_path: "acp-agent-cli session list"
+          kind: leaf
+          summary: List known ACP sessions and their local metadata.
+          positionals: []
+          flags:
+            - name: --workspace
+              type: path
+              required: false
+              default: none
+              description: Filter sessions by workspace path.
+          shared_flag_sets: [pagination, daemon_routing]
+          supported_output_formats: inherited_global_format
+          error_format: structured_stderr
+        - name: use
+          command_path: "acp-agent-cli session use"
+          kind: leaf
+          summary: Persist the active ACP session for later commands.
+          positionals:
+            - name: session_id
+              type: string
+              required: true
+              description: Session identifier to persist as active.
+          flags: []
+          supported_output_formats: inherited_global_format
+          error_format: structured_stderr
+        - name: show
+          command_path: "acp-agent-cli session show"
+          kind: leaf
+          summary: Show details for the effective ACP session.
+          positionals: []
+          flags: []
+          shared_flag_sets: [session_target, daemon_routing]
+          supported_output_formats: inherited_global_format
+          error_format: structured_stderr
+        - name: prompt
+          command_path: "acp-agent-cli session prompt"
+          kind: leaf
+          summary: Send a prompt to the effective ACP session.
+          positionals:
+            - name: message
+              type: string_list
+              required: true
+              description: Prompt text to send to the session.
+          flags:
+            - name: --stream
+              type: bool
+              required: false
+              default: false
+              description: Stream incremental turn output instead of waiting for a one-shot result envelope.
+            - name: --timeout-sec
+              type: int
+              required: false
+              default: 0
+              description: Optional client-side timeout in seconds; 0 uses the default wait policy.
+          shared_flag_sets: [session_target, selector_override, cwd_override, daemon_routing]
+          supported_output_formats: inherited_global_format
+          error_format: structured_stderr
+        - name: cancel-turn
+          command_path: "acp-agent-cli session cancel-turn"
+          kind: leaf
+          summary: Cancel the current turn for the effective ACP session.
+          positionals: []
+          flags: []
+          shared_flag_sets: [session_target, daemon_routing]
+          supported_output_formats: inherited_global_format
+          error_format: structured_stderr
+        - name: stop
+          command_path: "acp-agent-cli session stop"
+          kind: leaf
+          summary: Stop the effective ACP session.
+          positionals: []
+          flags: []
+          shared_flag_sets: [session_target, daemon_routing]
+          supported_output_formats: inherited_global_format
+          error_format: structured_stderr
+        - name: mode
+          command_path: "acp-agent-cli session mode"
+          kind: leaf
+          summary: Set the ACP-defined mode id for the effective session.
+          positionals:
+            - name: mode_id
+              type: string
+              required: true
+              description: ACP-defined mode identifier.
+          flags: []
+          shared_flag_sets: [session_target, daemon_routing]
+          supported_output_formats: inherited_global_format
+          error_format: structured_stderr
+        - name: config-option
+          command_path: "acp-agent-cli session config-option"
+          kind: leaf
+          summary: Set one ACP config option for the effective session.
+          positionals:
+            - name: config_id
+              type: string
+              required: true
+              description: ACP config option identifier.
+            - name: value
+              type: string
+              required: true
+              description: Config option value to apply.
+          flags: []
+          shared_flag_sets: [session_target, daemon_routing]
+          supported_output_formats: inherited_global_format
+          error_format: structured_stderr
+        - name: model
+          command_path: "acp-agent-cli session model"
+          kind: leaf
+          summary: Set the model id for the effective session.
+          positionals:
+            - name: model_id
+              type: string
+              required: true
+              description: Model identifier to apply to the session.
+          flags: []
+          shared_flag_sets: [session_target, daemon_routing]
+          supported_output_formats: inherited_global_format
+          error_format: structured_stderr
+        - name: authenticate
+          command_path: "acp-agent-cli session authenticate"
+          kind: leaf
+          summary: Trigger ACP authentication for the effective session.
+          positionals: []
+          flags:
+            - name: --method-id
+              type: string
+              required: false
+              default: none
+              description: Explicit ACP authentication method id; omit to use the session's default or promptable flow.
+          shared_flag_sets: [session_target, daemon_routing]
+          supported_output_formats: inherited_global_format
+          error_format: structured_stderr
+        - name: remote-sessions
+          command_path: "acp-agent-cli session remote-sessions"
+          kind: leaf
+          summary: List ACP remote sessions visible from the effective local session.
+          positionals: []
+          flags:
+            - name: --cwd
+              type: path
+              required: false
+              default: none
+              description: Optional remote cwd filter passed through to ACP remote-session listing.
+            - name: --cursor
+              type: string
+              required: false
+              default: none
+              description: Optional ACP pagination cursor for continued listing.
+          shared_flag_sets: [session_target, daemon_routing]
+          supported_output_formats: inherited_global_format
+          error_format: structured_stderr
+
+    - name: command
+      kind: group
+      summary: Discover ACP command surfaces exposed by the effective session.
+      subcommands:
+        - name: list
+          command_path: "acp-agent-cli command list"
+          kind: leaf
+          summary: List ACP commands visible to the effective session.
+          positionals: []
+          flags: []
+          shared_flag_sets: [session_target, pagination, daemon_routing]
+          supported_output_formats: inherited_global_format
+          error_format: structured_stderr
+
+    - name: skill
+      kind: group
+      summary: Discover ACP skill surfaces exposed by the effective session.
+      subcommands:
+        - name: list
+          command_path: "acp-agent-cli skill list"
+          kind: leaf
+          summary: List ACP skills visible to the effective session.
+          positionals: []
+          flags: []
+          shared_flag_sets: [session_target, pagination, daemon_routing]
+          supported_output_formats: inherited_global_format
+          error_format: structured_stderr
+
+    - name: proposal
+      kind: group
+      summary: Inspect and resolve ACP approval proposals.
+      subcommands:
+        - name: list
+          command_path: "acp-agent-cli proposal list"
+          kind: leaf
+          summary: List proposals visible to the current user and optional session filter.
+          positionals: []
+          flags:
+            - name: --session
+              type: string
+              required: false
+              default: none
+              description: Optional session filter for proposals.
+            - name: --status
+              type: enum
+              required: false
+              default: pending
+              values: [pending, approved, rejected, cancelled, all]
+              description: Proposal status filter.
+          shared_flag_sets: [pagination, daemon_routing]
+          supported_output_formats: inherited_global_format
+          error_format: structured_stderr
+        - name: approve
+          command_path: "acp-agent-cli proposal approve"
+          kind: leaf
+          summary: Approve one pending proposal.
+          positionals:
+            - name: proposal_id
+              type: int
+              required: true
+              description: Proposal identifier to approve.
+          flags: []
+          shared_flag_sets: [daemon_routing]
+          supported_output_formats: inherited_global_format
+          error_format: structured_stderr
+        - name: reject
+          command_path: "acp-agent-cli proposal reject"
+          kind: leaf
+          summary: Reject one pending proposal.
+          positionals:
+            - name: proposal_id
+              type: int
+              required: true
+              description: Proposal identifier to reject.
+          flags: []
+          shared_flag_sets: [daemon_routing]
+          supported_output_formats: inherited_global_format
+          error_format: structured_stderr
+        - name: edit
+          command_path: "acp-agent-cli proposal edit"
+          kind: leaf
+          summary: Edit and approve one pending proposal in a single action.
+          positionals:
+            - name: proposal_id
+              type: int
+              required: true
+              description: Proposal identifier to edit and approve.
+            - name: replacement
+              type: string_list
+              required: true
+              description: Replacement command text submitted with the edit-and-approve decision.
+          flags: []
+          shared_flag_sets: [daemon_routing]
+          supported_output_formats: inherited_global_format
+          error_format: structured_stderr
+
+    - name: file
+      kind: group
+      summary: Upload and download files relative to the effective session workspace.
+      subcommands:
+        - name: upload
+          command_path: "acp-agent-cli file upload"
+          kind: leaf
+          summary: Upload one local file into the effective session workspace.
+          positionals:
+            - name: source
+              type: path
+              required: true
+              description: Local file path to upload.
+          flags:
+            - name: --destination
+              type: string
+              required: false
+              default: source_basename
+              description: Destination path inside the session workspace.
+            - name: --overwrite
+              type: bool
+              required: false
+              default: false
+              description: Allow replacing an existing file at the destination path.
+          shared_flag_sets: [session_target, daemon_routing]
+          supported_output_formats: inherited_global_format
+          error_format: structured_stderr
+        - name: download
+          command_path: "acp-agent-cli file download"
+          kind: leaf
+          summary: Download one file from the effective session workspace.
+          positionals:
+            - name: remote_path
+              type: string
+              required: true
+              description: Workspace-relative path to download.
+          flags:
+            - name: --output
+              type: path
+              required: false
+              default: current_directory
+              description: Local output directory or file path.
+            - name: --overwrite
+              type: bool
+              required: false
+              default: false
+              description: Allow replacing an existing local output file.
+          shared_flag_sets: [session_target, daemon_routing]
+          supported_output_formats: inherited_global_format
+          error_format: structured_stderr
+
+    - name: code
+      kind: group
+      summary: Read, list, and search files in the effective session workspace.
+      subcommands:
+        - name: read
+          command_path: "acp-agent-cli code read"
+          kind: leaf
+          summary: Read one text file from the effective session workspace.
+          positionals:
+            - name: path
+              type: string
+              required: true
+              description: Workspace-relative file path to read.
+          flags: []
+          shared_flag_sets: [session_target, daemon_routing]
+          supported_output_formats: inherited_global_format
+          error_format: structured_stderr
+        - name: list
+          command_path: "acp-agent-cli code list"
+          kind: leaf
+          summary: List directory entries inside the effective session workspace.
+          positionals:
+            - name: path
+              type: string
+              required: false
+              default: "."
+              description: Workspace-relative directory path to list.
+          flags: []
+          shared_flag_sets: [session_target, daemon_routing]
+          supported_output_formats: inherited_global_format
+          error_format: structured_stderr
+        - name: search
+          command_path: "acp-agent-cli code search"
+          kind: leaf
+          summary: Search text files inside the effective session workspace.
+          positionals:
+            - name: pattern
+              type: string
+              required: true
+              description: Literal search pattern.
+          flags:
+            - name: --path
+              type: string
+              required: false
+              default: "."
+              description: Workspace-relative subtree to search.
+          shared_flag_sets: [session_target, daemon_routing]
+          supported_output_formats: inherited_global_format
+          error_format: structured_stderr
+
+    - name: terminal
+      kind: group
+      summary: Manage ACP-backed interactive terminal sessions.
+      subcommands:
+        - name: create
+          command_path: "acp-agent-cli terminal create"
+          kind: leaf
+          summary: Create a new terminal session bound to the effective ACP session.
+          positionals: []
+          flags:
+            - name: --rows
+              type: int
+              required: false
+              default: 24
+              description: Initial terminal row count.
+            - name: --cols
+              type: int
+              required: false
+              default: 80
+              description: Initial terminal column count.
+          shared_flag_sets: [session_target, daemon_routing]
+          supported_output_formats: inherited_global_format
+          error_format: structured_stderr
+        - name: list
+          command_path: "acp-agent-cli terminal list"
+          kind: leaf
+          summary: List known terminal sessions.
+          positionals: []
+          flags:
+            - name: --session
+              type: string
+              required: false
+              default: none
+              description: Optional session filter for listed terminals.
+          shared_flag_sets: [daemon_routing]
+          supported_output_formats: inherited_global_format
+          error_format: structured_stderr
+        - name: input
+          command_path: "acp-agent-cli terminal input"
+          kind: leaf
+          summary: Send input bytes to one terminal session.
+          positionals:
+            - name: terminal_id
+              type: string
+              required: true
+              description: Terminal identifier to write to.
+            - name: data
+              type: string_list
+              required: true
+              description: Input text to write to the terminal.
+          flags: []
+          shared_flag_sets: [daemon_routing]
+          supported_output_formats: inherited_global_format
+          error_format: structured_stderr
+        - name: resize
+          command_path: "acp-agent-cli terminal resize"
+          kind: leaf
+          summary: Resize one terminal session.
+          positionals:
+            - name: terminal_id
+              type: string
+              required: true
+              description: Terminal identifier to resize.
+          flags:
+            - name: --rows
+              type: int
+              required: true
+              default: none
+              description: New terminal row count.
+            - name: --cols
+              type: int
+              required: true
+              default: none
+              description: New terminal column count.
+          shared_flag_sets: [daemon_routing]
+          supported_output_formats: inherited_global_format
+          error_format: structured_stderr
+        - name: output
+          command_path: "acp-agent-cli terminal output"
+          kind: leaf
+          summary: Stream output from one terminal session until interrupted or closed.
+          positionals:
+            - name: terminal_id
+              type: string
+              required: true
+              description: Terminal identifier to follow.
+          flags: []
+          shared_flag_sets: [daemon_routing]
+          supported_output_formats: [yaml, json]
+          error_format: structured_stderr
+        - name: close
+          command_path: "acp-agent-cli terminal close"
+          kind: leaf
+          summary: Close one terminal session.
+          positionals:
+            - name: terminal_id
+              type: string
+              required: true
+              description: Terminal identifier to close.
+          flags: []
+          shared_flag_sets: [daemon_routing]
+          supported_output_formats: inherited_global_format
+          error_format: structured_stderr
+
+    - name: port-forward
+      kind: group
+      summary: Manage local-to-remote port forward rules for the effective ACP session.
+      subcommands:
+        - name: create
+          command_path: "acp-agent-cli port-forward create"
+          kind: leaf
+          summary: Create one port-forward rule.
+          positionals: []
+          flags:
+            - name: --local-port
+              type: int
+              required: true
+              default: none
+              description: Local port that should accept connections.
+            - name: --remote-port
+              type: int
+              required: true
+              default: none
+              description: Remote port exposed through the effective session.
+          shared_flag_sets: [session_target, daemon_routing]
+          supported_output_formats: inherited_global_format
+          error_format: structured_stderr
+        - name: list
+          command_path: "acp-agent-cli port-forward list"
+          kind: leaf
+          summary: List active port-forward rules.
+          positionals: []
+          flags:
+            - name: --session
+              type: string
+              required: false
+              default: none
+              description: Optional session filter for listed forward rules.
+          shared_flag_sets: [daemon_routing]
+          supported_output_formats: inherited_global_format
+          error_format: structured_stderr
+        - name: delete
+          command_path: "acp-agent-cli port-forward delete"
+          kind: leaf
+          summary: Delete one port-forward rule.
+          positionals: []
+          flags:
+            - name: --local-port
+              type: int
+              required: true
+              default: none
+              description: Local port of the rule to delete.
+          shared_flag_sets: [session_target, daemon_routing]
+          supported_output_formats: inherited_global_format
+          error_format: structured_stderr
+
+    - name: events
+      kind: group
+      summary: Stream structured ACP and control-plane events.
+      subcommands:
+        - name: follow
+          command_path: "acp-agent-cli events follow"
+          kind: leaf
+          summary: Stream structured application events, optionally filtered to one session.
+          positionals: []
+          flags:
+            - name: --session
+              type: string
+              required: false
+              default: none
+              description: Optional session filter; omit to stream all application events.
+          shared_flag_sets: [daemon_routing]
+          supported_output_formats: [yaml, json]
+          error_format: structured_stderr
+
+    - name: state
+      kind: group
+      summary: Fetch one-shot state snapshots.
+      subcommands:
+        - name: show
+          command_path: "acp-agent-cli state show"
+          kind: leaf
+          summary: Return a one-shot snapshot of sessions, proposals, logs, and active selections.
+          positionals: []
+          flags: []
+          shared_flag_sets: [daemon_routing]
+          supported_output_formats: inherited_global_format
+          error_format: structured_stderr
+
+    - name: passthrough
+      kind: group
+      summary: Forward raw ACP command or skill invocations that are not yet curated as first-class subcommands.
+      subcommands:
+        - name: command
+          command_path: "acp-agent-cli passthrough command"
+          kind: leaf
+          summary: Forward one raw ACP command invocation.
+          positionals:
+            - name: name
+              type: string
+              required: true
+              description: ACP command name to invoke.
+            - name: args
+              type: string_list
+              required: false
+              description: Additional raw ACP command arguments.
+          flags:
+            - name: --stream
+              type: bool
+              required: false
+              default: false
+              description: Request streamed command execution when ACP supports it.
+          shared_flag_sets: [session_target, workspace_target, selector_override, cwd_override, daemon_routing]
+          supported_output_formats: inherited_global_format
+          error_format: structured_stderr
+        - name: skill
+          command_path: "acp-agent-cli passthrough skill"
+          kind: leaf
+          summary: Forward one raw ACP skill invocation.
+          positionals:
+            - name: name
+              type: string
+              required: true
+              description: ACP skill name to invoke.
+            - name: args
+              type: string_list
+              required: false
+              description: Additional raw ACP skill arguments.
+          flags:
+            - name: --stream
+              type: bool
+              required: false
+              default: false
+              description: Request streamed skill execution when ACP supports it.
+          shared_flag_sets: [session_target, workspace_target, selector_override, cwd_override, daemon_routing]
+          supported_output_formats: inherited_global_format
+          error_format: structured_stderr
+
+    - name: repl
+      kind: leaf
+      summary: Open a local ACP session console for prompts, approvals, events, and quick control actions.
+      positionals: []
+      flags: []
+      shared_flag_sets: [session_target, workspace_target, agent_target, selector_override, cwd_override]
+      supported_output_formats: inherited_global_format
+      error_format: structured_stderr
+
+    - name: daemon
+      kind: group
+      summary: Control the managed ACP app-server lifecycle.
+      subcommands:
+        - name: run
+          command_path: "acp-agent-cli daemon run"
+          kind: leaf
+          summary: Run the app-server in the foreground for development or supervision.
+          positionals: []
+          flags:
+            - name: --transport
+              type: enum
+              required: false
+              default: local_ipc
+              values: [local_ipc, tcp]
+              description: Transport exposed by the foreground daemon.
+            - name: --tcp-bind
+              type: string
+              required: false
+              default: 127.0.0.1:0
+              description: Loopback bind address used only when --transport tcp.
+            - name: --auth-token-env
+              type: string
+              required: false
+              default: ACP_AGENT_CLI_DAEMON_AUTH_TOKEN
+              description: Environment variable that holds the TCP auth token when --transport tcp.
+          supported_output_formats: inherited_global_format
+          error_format: structured_stderr
+        - name: start
+          command_path: "acp-agent-cli daemon start"
+          kind: leaf
+          summary: Start the managed app-server in the background.
+          positionals: []
+          flags:
+            - name: --transport
+              type: enum
+              required: false
+              default: local_ipc
+              values: [local_ipc, tcp]
+              description: Transport exposed by the background daemon.
+            - name: --tcp-bind
+              type: string
+              required: false
+              default: 127.0.0.1:0
+              description: Loopback bind address used only when --transport tcp.
+            - name: --auth-token-env
+              type: string
+              required: false
+              default: ACP_AGENT_CLI_DAEMON_AUTH_TOKEN
+              description: Environment variable that holds the TCP auth token when --transport tcp.
+            - name: --startup-timeout-sec
+              type: int
+              required: false
+              default: 30
+              description: Maximum time to wait for the daemon to report running.
+          supported_output_formats: inherited_global_format
+          error_format: structured_stderr
+        - name: stop
+          command_path: "acp-agent-cli daemon stop"
+          kind: leaf
+          summary: Request graceful background daemon shutdown.
+          positionals: []
+          flags:
+            - name: --shutdown-timeout-sec
+              type: int
+              required: false
+              default: 30
+              description: Maximum time to wait for the daemon to report stopped.
+          supported_output_formats: inherited_global_format
+          error_format: structured_stderr
+        - name: restart
+          command_path: "acp-agent-cli daemon restart"
+          kind: leaf
+          summary: Restart the managed app-server using the selected transport profile.
+          positionals: []
+          flags:
+            - name: --transport
+              type: enum
+              required: false
+              default: local_ipc
+              values: [local_ipc, tcp]
+              description: Transport exposed after restart.
+            - name: --tcp-bind
+              type: string
+              required: false
+              default: 127.0.0.1:0
+              description: Loopback bind address used only when --transport tcp.
+            - name: --auth-token-env
+              type: string
+              required: false
+              default: ACP_AGENT_CLI_DAEMON_AUTH_TOKEN
+              description: Environment variable that holds the TCP auth token when --transport tcp.
+            - name: --startup-timeout-sec
+              type: int
+              required: false
+              default: 30
+              description: Maximum time to wait for restart to report running.
+            - name: --shutdown-timeout-sec
+              type: int
+              required: false
+              default: 30
+              description: Maximum time to wait for the old daemon to stop.
+          supported_output_formats: inherited_global_format
+          error_format: structured_stderr
+        - name: status
+          command_path: "acp-agent-cli daemon status"
+          kind: leaf
+          summary: Show daemon health, endpoint, pid, and recommended next action.
+          positionals: []
+          flags: []
+          supported_output_formats: inherited_global_format
+          error_format: structured_stderr
+
+    - name: registry
+      kind: group
+      summary: Discover, install, and manage ACP agents from a remote registry.
+      subcommands:
+        - name: search
+          command_path: "acp-agent-cli registry search"
+          kind: leaf
+          summary: Search the remote registry for available ACP agents by keyword.
+          positionals:
+            - name: query
+              type: string
+              required: true
+              description: Search keyword or phrase to match against agent names, descriptions, and tags.
+          flags:
+            - name: --tag
+              type: string
+              required: false
+              repeatable: true
+              default: none
+              description: Filter results by tag; may be specified multiple times.
+            - name: --category
+              type: string
+              required: false
+              default: none
+              description: Filter results by agent category.
+            - name: --verified-only
+              type: bool
+              required: false
+              default: false
+              description: Only return verified or officially curated agents.
+          shared_flag_sets: [pagination, registry_target]
+          supported_output_formats: inherited_global_format
+          error_format: structured_stderr
+
+        - name: list
+          command_path: "acp-agent-cli registry list"
+          kind: leaf
+          summary: List all available ACP agents from the remote registry.
+          positionals: []
+          flags:
+            - name: --tag
+              type: string
+              required: false
+              repeatable: true
+              default: none
+              description: Filter results by tag; may be specified multiple times.
+            - name: --category
+              type: string
+              required: false
+              default: none
+              description: Filter results by agent category.
+            - name: --verified-only
+              type: bool
+              required: false
+              default: false
+              description: Only return verified or officially curated agents.
+          shared_flag_sets: [pagination, registry_target]
+          supported_output_formats: inherited_global_format
+          error_format: structured_stderr
+
+        - name: show
+          command_path: "acp-agent-cli registry show"
+          kind: leaf
+          summary: Show detailed information about a specific agent from the registry.
+          positionals:
+            - name: agent_id
+              type: string
+              required: true
+              description: Agent identifier from the registry.
+          flags:
+            - name: --version
+              type: string
+              required: false
+              default: latest
+              description: Show details for a specific version; defaults to latest.
+          shared_flag_sets: [registry_target]
+          supported_output_formats: inherited_global_format
+          error_format: structured_stderr
+
+        - name: installed
+          command_path: "acp-agent-cli registry installed"
+          kind: leaf
+          summary: Scan and list locally installed ACP agents with version and health status.
+          positionals: []
+          flags:
+            - name: --check-health
+              type: bool
+              required: false
+              default: false
+              description: Verify each installed agent is functional by probing its executable.
+            - name: --verbose
+              type: bool
+              required: false
+              default: false
+              description: Include installation paths, metadata, and configuration details.
+          shared_flag_sets: []
+          supported_output_formats: inherited_global_format
+          error_format: structured_stderr
+
+        - name: install
+          command_path: "acp-agent-cli registry install"
+          kind: leaf
+          summary: Download and install an ACP agent from the registry.
+          positionals:
+            - name: agent_id
+              type: string
+              required: true
+              description: Agent identifier from the registry to install.
+          flags:
+            - name: --version
+              type: string
+              required: false
+              default: latest
+              description: Specific version to install; defaults to latest.
+            - name: --yes
+              short: -y
+              type: bool
+              required: false
+              default: false
+              description: Skip confirmation prompts and proceed with installation.
+            - name: --set-active
+              type: bool
+              required: false
+              default: false
+              description: Set the installed agent as the active agent after installation.
+          shared_flag_sets: [registry_target]
+          supported_output_formats: inherited_global_format
+          error_format: structured_stderr
+
+        - name: uninstall
+          command_path: "acp-agent-cli registry uninstall"
+          kind: leaf
+          summary: Remove a locally installed ACP agent.
+          positionals:
+            - name: agent_id
+              type: string
+              required: true
+              description: Locally installed agent identifier to remove.
+          flags:
+            - name: --yes
+              short: -y
+              type: bool
+              required: false
+              default: false
+              description: Skip confirmation prompts and proceed with removal.
+            - name: --purge-config
+              type: bool
+              required: false
+              default: false
+              description: Also remove agent-specific configuration and data.
+          shared_flag_sets: []
+          supported_output_formats: inherited_global_format
+          error_format: structured_stderr
+
+        - name: update
+          command_path: "acp-agent-cli registry update"
+          kind: leaf
+          summary: Update one or all installed ACP agents to the latest version.
+          positionals:
+            - name: agent_id
+              type: string
+              required: false
+              default: none
+              description: Specific agent to update; omit to update all installed agents.
+          flags:
+            - name: --version
+              type: string
+              required: false
+              default: latest
+              description: Specific version to update to; defaults to latest.
+            - name: --check-only
+              type: bool
+              required: false
+              default: false
+              description: Check for available updates without installing them.
+            - name: --yes
+              short: -y
+              type: bool
+              required: false
+              default: false
+              description: Skip confirmation prompts and proceed with updates.
+          shared_flag_sets: [registry_target]
+          supported_output_formats: inherited_global_format
+          error_format: structured_stderr
+
+repl_contract:
+  status: in_scope
+  model: session_console
+  requires_active_session: true
+  session_resolution: explicit --session wins, otherwise Active Context
+  default_input_behavior: plain lines send prompt text to the session
+  slash_commands:
+    - /prompt
+    - /approve
+    - /reject
+    - /edit
+    - /events
+    - /files
+    - /stop
+    - /help
+    - /exit
+  help_channel: plain_text_only
+  exit_triggers:
+    - /exit
+    - quit
+    - EOF
+  note: The REPL remains a local client surface even when daemon routing is enabled.
+
+approved_by: user
+approved_at: "2026-04-19T02:20:00Z"

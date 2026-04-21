@@ -1,0 +1,33 @@
+{
+  "name": "acp-agent-cli",
+  "version": "1.0.0",
+  "description": "Official full-function ACP CLI for developers and automation, exposing the complete ACP protocol surface through one unified command-line workflow.",
+  "license": "UNLICENSED",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ByteLandTechnology/acp-agent-cli.git"
+  },
+  "type": "module",
+  "bin": {
+    "acp-agent-cli": "bin/cli.js"
+  },
+  "files": [
+    "bin/",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
+  "optionalDependencies": {
+    "@cli-forge-bin/acp-agent-cli-darwin-arm64": "1.0.0",
+    "@cli-forge-bin/acp-agent-cli-darwin-x64": "1.0.0",
+    "@cli-forge-bin/acp-agent-cli-linux-arm64": "1.0.0",
+    "@cli-forge-bin/acp-agent-cli-linux-x64": "1.0.0",
+    "@cli-forge-bin/acp-agent-cli-win32-arm64": "1.0.0",
+    "@cli-forge-bin/acp-agent-cli-win32-x64": "1.0.0"
+  }
+}
